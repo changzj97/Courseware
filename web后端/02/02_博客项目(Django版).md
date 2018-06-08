@@ -884,6 +884,46 @@ url(r'^blog/(?P<bid>[0-9]+)/$', blog_detail, name='blog_detail'),
 ```
 
 # 二十、实现相关推荐功能
+- 编写视图
+```django
+def blog_detail(request, pid):
+    post = Post.objects.get(id=pid)
+
+    post.views = post.views + 1
+    post.save()
+
+    comment_list = Comment.objects.order_by('-pub_date')
+    # 最新评论的博客  列表
+    new_comment_list = []
+
+    # 去重
+    for c in comment_list:
+        if c.post not in new_comment_list:
+            new_comment_list.append(c.post)
+
+    # 相关推荐
+    # 首先  我们需要取到 这篇文章的tag
+    tag_post_list = []
+    for tag in post.tags.all():
+        tag_post_list.extend(tag.post_set.all())
+
+    ctx = {
+        'post': post,
+        'new_comment_list': new_comment_list,
+        'tag_post_list': tag_post_list
+    }
+    return render(request, 'show.html', ctx)
+
+```
+
+- 模板
+```html
+ {% for tag_post in tag_post_list %}
+                            <li><a href="{% url 'blog:detail' tag_post.id %}" title="">{{ tag_post.title }}</a></li>
+                        {% endfor %}
+```
+
+
 # 二十一、实现发表评论的功能
 # 二十二、实现评论列表功能
 # 二十三、实现登录功能
