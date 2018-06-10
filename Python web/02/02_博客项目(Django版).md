@@ -129,7 +129,7 @@ python manage.py createsuperuser
 ## USERAPP
 ###　USER(用户模型)
 
-```django
+```python
 from django.contrib.auth.models import AbstractUser
 
 class BlogUser(AbstractUser):
@@ -139,7 +139,7 @@ class BlogUser(AbstractUser):
 
 ### EMAIL(邮箱验证数据模型)
 
-```django
+```python
 class EmailVerifyRecord(models.Model):
     code = models.CharField(verbose_name='验证码', max_length=50,default='')
     email = models.EmailField(max_length=50, verbose_name="邮箱")
@@ -156,7 +156,7 @@ class EmailVerifyRecord(models.Model):
 ```
 ## BLOGAPP
 ### Banner(轮播图模型)
-```django
+```python
 class Banner(models.Model):
     title = models.CharField('标题', max_length=50)
     cover = models.ImageField('轮播图', upload_to='static/images/banner')
@@ -172,7 +172,7 @@ class Banner(models.Model):
 ```
 
 ### Category(博客分类模型)
-```django
+```python
 class BlogCategory(models.Model):
     name = models.CharField('分类名称', max_length=20, default='')
     class Meta:
@@ -184,7 +184,7 @@ class BlogCategory(models.Model):
 ```
 
 ### Tags(标签模型)
-```django
+```python
 class Tags(models.Model):
     name = models.CharField('标签名称', max_length=20, default='')
     class Meta:
@@ -196,7 +196,7 @@ class Tags(models.Model):
 ```
 
 ### Blog(博客模型)
-```django
+```python
 class Post(models.Model):
     user = models.ForeignKey(BlogUser, verbose_name='作者')
     category = models.ForeignKey(BlogCategory, verbose_name='博客分类', default=None)
@@ -217,7 +217,7 @@ class Post(models.Model):
 
 ### Comment(评论模型)
 
-```django
+```python
 class Comment(models.Model):
     post = models.ForeignKey(Post, verbose_name='博客')
     user = models.ForeignKey(BlogUser, verbose_name='作者')
@@ -233,7 +233,7 @@ class Comment(models.Model):
 
 ### FriendlyLink(友情链接模型)
 
-```django
+```python
 class FriendlyLink(models.Model):
     title = models.CharField('标题', max_length=50)
     link = models.URLField('链接', max_length=50, default='')
@@ -249,7 +249,7 @@ class FriendlyLink(models.Model):
 ## 创建模板文件夹
 > 创建模板文件templates,并在settings.py中设置
 
-```django
+```python
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -268,7 +268,7 @@ TEMPLATES = [
 ```
 ## 配置静态文件路径
 
-```django
+```python
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (
@@ -280,12 +280,12 @@ STATICFILES_DIRS = (
 # 六、创建首页路由
 
 - 创建视图函数
-```django
+```python
 def index(request):
     return render(request, 'index.html',  {})
 ```
 - 配置url
-```django
+```python
 url(r'^$', index, name='index' )
 ```
 - 修改模板CSS　JS等静态文件的路径
@@ -294,12 +294,12 @@ url(r'^$', index, name='index' )
 # 七、实现幻灯片功能(Banner)
 
 - 注册模型
-```django
+```python
 from blogs.models import Banner
 admin.site.register(Banner)
 ```
 - 编写views
-```django
+```python
 from .models import Banner
 
 def index(request):
@@ -311,7 +311,7 @@ def index(request):
 ```
 
 - 模板
-```django
+```python
   <!-- banner 开始 -->
   <div id="focusslide" class="carousel slide" data-ride="carousel">
 	<ol class="carousel-indicators">
@@ -354,7 +354,7 @@ def index(request):
 ```
 # 八、实现博客推荐
 - 注册模型
-```django
+```python
 from blogs.models import Banner,Post,BlogCategory,Tags
 ...
 admin.site.register(BlogCategory)
@@ -362,7 +362,7 @@ admin.site.register(Tags)
 admin.site.register(Post)
 ```
 - 编写views
-```django
+```python
 
 # 视图函数 HTTPRequest
 def index(request):
@@ -388,7 +388,7 @@ def index(request):
 ```
 # 九、实现最新发布
 - 编写views
-```django
+```python
 # 视图函数 HTTPRequest
 def index(request):
     ...
@@ -403,7 +403,7 @@ def index(request):
     return render(request, 'index.html',  ctx)
 ```
 - 模板
-```django
+```python
   <!-- 最新发布的博客开始 -->
 
   {% for post in post_list%}
@@ -435,7 +435,7 @@ def index(request):
 ```
 # 十、实现博客分类功能
 - 编写视图
-```django
+```python
 # 视图函数 HTTPRequest
 def index(request):
     banner_list = Banner.objects.all()
@@ -465,7 +465,7 @@ def index(request):
 
 # 十一、实现最新评论功能
 - 编写views
-```django
+```python
  <ul>
 
                 {% for post in new_comment_list %}
@@ -484,7 +484,7 @@ def index(request):
 ```
 # 十二、实现搜索功能
 - 编写views
-```django
+```python
 from django.views.generic.base import View
 from django.db.models import Q
 class SearchView(View):
@@ -500,20 +500,20 @@ class SearchView(View):
         return render(request, 'list.html', ctx)
 ```
 - urls
-```django
+```python
 url(r'^search$', SearchView.as_view(), name='search'),
 ```
 
 # 十三、实现友情链接
 - 编写视图  (数据源)
-```django
+```python
 def index(request):
     ....
     friendlylink_list = FriendlyLink.objects.all()
     .....
 ```
 - 模板
-```django
+```python
 
         <div class="widget widget_sentence">
             <h3>友情链接</h3>
@@ -531,7 +531,7 @@ def index(request):
 
 # 十四、实现博客列表功能
 - 编写views
-```django
+```python
 def blog_list(request):
     post_list = POST.objects.all()
     ctx = {
@@ -540,7 +540,7 @@ def blog_list(request):
     return render(request, 'list.html', ctx)
 ```
 - 编写路由
-```django
+```python
 url(r'^list$', blog_list, name='blog_list'),
 ```
 - base.html
@@ -630,12 +630,12 @@ url(r'^list$', blog_list, name='blog_list'),
 ```
 # 十五、实现分页功能
 - 安装包
-```django
+```python
 pip install django-pure-pagination
 ```
 > 参考链接: https://github.com/jamespacileo/django-pure-pagination
 
-```django
+```python
 def blog_list(request):
     post_list = Post.objects.all()
     try:
@@ -651,7 +651,7 @@ def blog_list(request):
     return render(request, 'list.html', ctx)
 ```
 - 模板
-```django
+```python
 <section class="container">
 <div class="content-wrap">
 <div class="content">
@@ -675,7 +675,7 @@ def blog_list(request):
   {% include "_pagination.html" %}
 ```
 - _pagination.html
-```django
+```python
 {% load i18n %}
 <div class="pagination">
     {% if post_list.has_previous %}
@@ -705,7 +705,13 @@ def blog_list(request):
 
 
 # 十六、实现标签云功能
-```django
+```python
+class TagMessage(object):
+    def __init__(self, tid, name, count):
+        self.tid = tid
+        self.name = name
+        self.count = count
+
 def blog_list(request):
     post_list = Post.objects.all()
     try:
@@ -745,7 +751,7 @@ def blog_list(request):
 ```
 # 十七、实现分类查询功能
 - 编写视图
-```django
+```python
 def blog_list(request, cid=-1):
     post_list = None
     if cid != -1:
@@ -763,7 +769,7 @@ def blog_list(request, cid=-1):
     return render(request, 'list.html', ctx)
 ```
 - 编写路由
-```django
+```python
 url(r'^category/(?P<cid>[0-9]+)/$', blog_list),
 ```
 - 模板 index
@@ -779,7 +785,7 @@ url(r'^category/(?P<cid>[0-9]+)/$', blog_list),
 ```
 # 十八、实现按标签查询功能
 - 编写views
-```django
+```python
 def blog_list(request, cid=-1, tid=-1):
     post_list = None
     if cid != -1:
@@ -800,11 +806,11 @@ def blog_list(request, cid=-1, tid=-1):
     return render(request, 'list.html', ctx)
 ```
 - 路由设置
-```django
+```python
 url(r'^tags/(?P<tid>[0-9]+)/$', blog_list),
 ```
 - 模板
-```django
+```python
 	<h3>标签云</h3>
 	<div class="widget-sentence-content">
 		<ul class="plinks ptags">
@@ -885,7 +891,7 @@ url(r'^blog/(?P<bid>[0-9]+)/$', blog_detail, name='blog_detail'),
 
 # 二十、实现相关推荐功能
 - 编写视图
-```django
+```python
 def blog_detail(request, pid):
     post = Post.objects.get(id=pid)
 
@@ -925,7 +931,88 @@ def blog_detail(request, pid):
 
 
 # 二十一、实现发表评论的功能
+- show.html
+```html
+	<h3>评论</h3>
+  </div>
+  <div id="respond">
+		<form id="comment-form" name="comment-form" action="/comment/{{post.id}}" method="POST">
+			<div class="comment">
+				<input name="username" id="" value="{{user.username}}" class="form-control" size="22" placeholder="您的昵称（必填）" maxlength="15" autocomplete="off" tabindex="1" type="text">
+				<!-- <input name="" id="" class="form-control" size="22" placeholder="您的网址或邮箱（非必填）" maxlength="58" autocomplete="off" tabindex="2" type="text"> -->
+				<div class="comment-box">
+					<textarea placeholder="您的评论或留言（必填）" name="content" id="comment-textarea" cols="100%" rows="3" tabindex="3"></textarea>
+					<div class="comment-ctrl">
+						<div class="comment-prompt" style="display: none;"> <i class="fa fa-spin fa-circle-o-notch"></i> <span class="comment-prompt-text">评论正在提交中...请稍后</span> </div>
+						<div class="comment-success" style="display: none;"> <i class="fa fa-check"></i> <span class="comment-prompt-text">评论提交成功...</span> </div>
+						<button type="submit" name="comment-submit" id="comment-submit" tabindex="4">评论</button>
+					</div>
+				</div>
+			</div>
+      {% csrf_token %}
+		</form>
+```
+- 编写视图类
+```python
+class CommentView(View):
+    def get(self, request):
+        pass
+    def post(self, request, bid):
+
+        comment = Comment()
+        comment.user = request.user
+        comment.post = Post.objects.get(id=bid)
+        comment.content = request.POST.get('content')
+        comment.pub_date = datetime.now()
+        comment.save()
+        # Ajax
+        return HttpResponseRedirect(reverse("blog_detail", kwargs={"bid":bid}))
+```
+- 编写路由
+```python
+url(r'^comment/(?P<bid>[0-9]+)$', CommentView.as_view(), name='comment'),
+```
 # 二十二、实现评论列表功能
+- 编写视图
+```python
+def blog_detail(request,bid):
+    post = Post.objects.get(id=bid)
+    post.views = post.views + 1
+    post.save()
+
+    # 最新评论博客
+    new_comment_list = Comment.objects.order_by('-pub_date').all()[:10]
+
+    comment_list = post.comment_set.all()
+
+    # 去重
+    new_comment_list1 = []
+    post_list1 = []
+    for c in new_comment_list:
+        if c.post.id not in post_list1:
+            new_comment_list1.append(c)
+            post_list1.append(c.post.id)
+
+    # 博客标签
+    tag_list = post.tags.all()
+
+    # 相关推荐（标签相同的）
+    post_recomment_list = set(Post.objects.filter(tags__in=tag_list)[:6])
+
+    ctx = {
+        'post': post,
+        'new_comment_list': new_comment_list1,
+        'post_recomment_list': post_recomment_list,
+        'comment_list': comment_list
+
+    }
+    return render(request, 'show.html', ctx)
+```
+```html
+ {% for comment in comment_list %}
+	<li class="comment-content"><span class="comment-f">#{{forloop.counter}}</span><div class="comment-main"><p><a class="address" href="#" rel="nofollow" target="_blank">{{comment.user.username}}</a><span class="time">({{comment.pub_date|date:'Y-m-d'}})</span><br>{{comment.content}}</p></div></li>
+  {% endfor %}
+```
 # 二十三、实现登录功能
 # 二十四、实现注册功能
 # 二十五、实现注册验证功能
