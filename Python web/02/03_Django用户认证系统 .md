@@ -4,435 +4,394 @@ tags: Django
 notebook: 7.0第五月 Python_web后端
 ---
 
+
 [toc]
 
-网站提供登录、注册等用户认证功能是一个常见的需求,例如如何提供用户注册、登录、修改密码、找回密码等功能。因此，Django 提供了一套功能完整的、灵活的、易于拓展的用户认证系统：django.contrib.auth。
-
-# Django用户认证系统: 基本设置
-## 开启一个新的Django工程
-```Python
- django-admin startproject django_auth_example
-```
-## 工程的目录结构
-```Python
-django_auth_example/
-    manage.py
-    django_auth_example/
-        __init__.py
-        settings.py
-        urls.py
-        wsgi.py
-```
-## 必要的配置
-> Django 在新建工程时已经为使用用户认证系统做好了全部必要的配置。不过有可能你并非使用 django-admin 命令新建的工程，或者你使用的是一个正在开发中的项目，因此最好再检查一下 settings.py 文件中是否已经做好了全部必要配置。
-
-- 首先检查一下必要的应用是否已经在 ``INSTALLED_APPS`` 配置里列出：
-```Python
-django_auth_example/settings.py
-
-INSTALLED_APPS = [
-    # 其它应用列表...
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
+# 用户身份验证
+## 设置身份验证
+在使用 Django 提供的身份验证机制之前,要在项目的 settings.py 文件中添加相关的设置。
+在 settings.py 文件中找到 INSTALLED_APPS 列表,检查有没有列出 django.contrib.auth 和 django.contrib.contenttypes 。 INSTALLED_APPS 列表应该类似下面这样:
+```python
+INSTALLED_APPS =[
+'django.contrib.admin',
+'django.contrib.auth',
+'django.contrib.contenttypes',
+'django.contrib.sessions',
+'django.contrib.messages',
+'django.contrib.staticfiles',
+'rango',
 ]
 ```
-为了使用用户认证系统,必须安装以下两个应用:
-- django.contrib.auth
-- django.contrib.contenttypes
+``django.contrib.auth`` 用于访问 Django 提供的身份验证系统,而 ``django.contrib.contenttypes`` 供auth 应用跟踪数据库中的模型。
 
-django.contrib.contenttypes 是 ``auth`` 模块的用户权限处理部分依赖的应用。
-其次需要在中间件 ``MIDDLEWARE`` 配置里列出以下两个中间件：
-- SessionMiddleware 用户处理用户会话。
-- AuthenticationMiddleware 绑定一个 ``User`` 对象到请求中（具体将在后面介绍）。
+> 如果 INSTALLED_APPS 列表中没有 django.contrib.auth 和 django.contrib.contenttypes ,要自己添加,添加后还要执行 python manage.py migrate 命令更新数据库,添加所需的表,例如 User 模型的表。
+在 Django 项目中添加新的应用后,一般最好执行 migrate 命令,以防应用中有模型要与底层数据库同步。
+## 密码哈希
+任何情况下都不能在数据库中存储明文密码。 1 如果包含用户账户的数据库落到不怀好意的人手上,可能造成天大的灾难。幸好,Django 的 auth 应用默认存储的是经过 PBKDF2 算法计算过的密码哈希值,可以有效保护用户数据的安全。然而,如果你想进一步控制生成密码哈希值的方式,可以在项目的 settings.py 模块中更换 Django 使用的算法。为此,添加PASSWORD_HASHERS 元组,例如:
 
-即像下面这样的配置：
-```Python
-django_auth_example/settings.py
-
-MIDDLEWARE = [
-    # 其它中间列表...
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+```python
+PASSWORD_HASHERS = (
+'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+)
+```
+罗列哈希算法的顺序很重要,Django 将使用 PASSWORD_HASHERS 中的第一个哈希算法( settings.PASSWORD_HASHERS[0] )。如果第一个无效,而且还有其他哈希算法供选择,Django将依次尝试后面的算法。
+如果想使用更为安全的哈希算法,可以安装 Bcrypt( pip install bcrypt ),然后把PASSWORD_HASHERS 设为:
+```python
+PASSWORD_HASHERS = [
+'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+'django.contrib.auth.hashers.BCryptPasswordHasher',
+'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
 ]
 ```
-如果以上配置没问题的话就可以正常地使用用户认证系统了。
-## 新建一个应用
-即便是目前只使用 Django 用户认证系统的默认特性，推荐的做法也是新建一个应用，用于存放和用户功能相关的代码，为将来可能的功能拓展做准备。因此让我们来新建一个应用，我习惯上把应用命名为 users。
-```Python
-python manage.py startapp users
-```
-新建的应用一定要记得在 settings.py 里注册，否则 Django 无法得知你新建了应用。
+## 密码验证器
+鉴于人们经常使用相对容易猜出的密码,Django 1.9 引入了一个备受期待的新功能——密码验证。在 Django 项目的 settings.py 模块中有个字典构成的列表,名为 AUTH_PASSWORD_VALIDATORS 。在嵌套的字典中可以清楚地看出,Django 1.9 自带了一些常用的密码验证器,例如针对长度的验
+证器。每个验证器都有 OPTIONS 字典,以便自定义选项。假如你想确保密码最短为 6 个字符,那么可以把 MinimumLengthValidator 的 min_length 选项设为 6 ,如下所示:
 ```python
-django_auth_example/settings.py
-
-INSTALLED_APPS = [
-    # 其它应用列表...
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'users', # 注册新建的应用 users
+AUTH_PASSWORD_VALIDATORS = [
+...
+{
+'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+'OPTIONS': { 'min_length': 6, }
+},
+...
 ]
 ```
-OK，项目的基本准备工作到这里就结束了，接下来让我们开始使用 Django 用户系统为我们提供的功能吧！
-# Django用户认证系统: 拓展User模型
-Django 用户认证系统提供了一个内置的 User 对象，用于记录用户的用户名，密码等个人信息。对于 Django 内置的 ``User`` 模型， 仅包含以下一些主要的属性：
-- username，即用户名
-- password，密码
-- email，邮箱
-- first_name，名
-- last_name，姓
+除了自带的密码验证器之外,还可以自定义。本书不介绍具体方法,如果感兴趣,请阅读 Django文档。
+## User模型
+User 对象( django.contrib.auth.models.User )是 Django 身份验证系统的核心,表示与 Django应用交互的每个个体。根据 Django 文档,身份验证系统的很多方面都能用到 User 对象,例如访问限制、注册新用户,以及网站内容与创建者之间的关系。
 
-对于一些网站来说，用户可能还包含有昵称、头像、个性签名等等其它属性，因此仅仅使用 Django 内置的 User 模型是不够。好在 Django 用户系统遵循可拓展的设计原则，我们可以方便地拓展 User 模型。
-## 继承 AbstractUser 拓展用户模型
-这是推荐做法。事实上，查看 ``User`` 模型的源码就知道，User 也是继承自 ``AbstractUser`` 抽象基类，而且仅仅就是继承了 AbstractUser，没有对 AbstractUser 做任何的拓展。以下就是 User 的源码：
+User 模型有 5 个主要属性:
+- 用户账户的用户名( username )
+- 用户账户的密码( password )
+- 用户的电子邮件地址( email )
+- 用户的名字( first_name )
+- 用户的姓( last_name )
+
+此外, User 模型还有其他属性,例如 is_active 、 is_staff 和 is_superuser 。这些属性的值都是布尔值,分别用于指明账户是否激活、是否为团队成员,以及是否拥有超级用户权限。 User 模型的完整属性列表参阅 Django 文档。
+## 增加用户属性
+除了 User 模型提供的属性之外,如果还需要其他用户相关的属性,要自己定义一个与 User 模型关联的模型。对 Rango 应用而言,我们想为用户账户增加两个属性:
+- 一个 URLField ,让 Rango 的用户设定自己的网站
+- 一个 ImageField ,让 Rango 的用户设定自己的头像
+
+为此,要在 Rango 应用的 models.py 文件中定义一个模型。我们把这个模型命名为 UserProfile 。
+
 ```python
-class User(AbstractUser):
-    """
-    Users within the Django authentication system are represented by this
-    model.
-
-    Username, password and email are required. Other fields are optional.
-    """
-    class Meta(AbstractUser.Meta):
-        swappable = 'AUTH_USER_MODEL'
-```
-所以，如果我们继承 ``AbstractUser``，将获得 ``User`` 的全部特性，而且还可以根据自己的需求进行拓展。
-
-我们之前新建了一个 users 应用，通常我们把和数据库模型相关的代码写在 models.py 文件里。打开 users/models.py 文件，写上我们自定义的用户模型代码：
-```python
-# users/models.py
-
-from django.db import models
-from django.contrib.auth.models import AbstractUser
-
-
-class User(AbstractUser):
-    nickname = models.CharField(max_length=50, blank=True)
-
-    class Meta(AbstractUser.Meta):
-        pass
-```
-我们给自定义的用户模型新增了一个 nickname（昵称）属性，用来记录用户的昵称信息，设置 blank=True 的目的是让用户在注册时无需填写昵称。根据你的需求可以自己进一步拓展，例如增加用户头像、个性签名等等，添加多少属性字段没有任何限制。
-
-同时，我们继承了 ``AbstractUser`` 的内部类属性 ``Meta`` ，不过目前什么也没做。在这里继承 Meta 的原因是在你的项目中可能需要设置一些 ``Meta`` 类的属性值，不要忘记继承 ``AbstractUser.Meta`` 中已有的属性。
-
-注意:
-> 为了让 Django 用户认证系统使用我们自定义的用户模型，必须在 settings.py 里通过 AUTH_USER_MODEL 指定自定义用户模型所在的位置，即需要如下设置：
-```python
-# django_auth_example/settings.py
-
-# 其它设置...
-AUTH_USER_MODEL = 'users.User'
-```
-即告诉 Django，使用 users 应用下的 User 用户模型。
-
-顺便再修改一下语言设置和时区设置：
-```python
-# django_auth_example/settings.py
-
-# 其它设置...
-
-LANGUAGE_CODE = 'zh-hans'
-TIME_ZONE = 'Asia/Shanghai'
-```
-设置好自定义用户模型后，生成数据库迁移文件，并且迁移数据库以生成各个应用必要的数据库表。即运行如下两条命令：
-```python
-python manage.py makemigrations
-python manage.py migrate
-```
-OK，现在 Django 用户系统使用的用户模型就是自定义的 User 模型了。
-``注意:``
-> 注意：一定要在设置好 AUTH_USER_MODEL = 'users.User' 后在第一次迁移数据库，即指定好自定义的用户模型后再执行数据库迁移命令。
-## 使用 Profile 模式拓展用户模型
-如果想为一个已使用了 Django 内置 User 模型的项目拓展用户模型，上述继承 AbstractUser 的拓展方式会变得有点麻烦。Django 没有提供一套自动化的方式将内置的 User 迁移到自定义的用户模型，因为 Django 已经为内置的 User 模型生成了相关数据库迁移文件和数据库表。如果非要这么做的话，需要手工修改迁移文件和数据库表，并且移动数据库中相关的用户数据。
-
-所以我们采用另一种不改动数据库表的方式来拓展用户模型，具体来说，我们在创建一个模型（通常命名为 Profile）来记录用户相关的数据，然后使用一对一的方式将这个 Profile 模型和 User 关联起来，就好像每个用户都关联着一张记录个人资料的表一样。代码如下：
-```python
-# models.py
-
-from django.contrib.auth.models import User
-
-class Profile(models.Model):
-    nickname = models.CharField(max_length=50, blank=True)
+class UserProfile(models.Model):
+    # 这一行是必须的
+    # 建立与 User 模型之间的关系
     user = models.OneToOneField(User)
+    # 想增加的属性
+    website = models.URLField(blank=True)
+    picture = models.ImageField(upload_to='profile_images', blank=True)
+    # 覆盖 __str__() 方法,返回有意义的字符串
+    # 如果使用 Python 2.7.x,还要定义 __unicode__ 方法
+    def __str__(self):
+        return self.user.username
 ```
-这种方式和 AbstractUser 的区别是，继承 AbstractUser 的用户模型只有一张数据库表。而 Profile 这种模式有两张表，一张是 User 模型对应的表，一张是 Profile 模型对应的表，两张表通过一对一的关系关联。可见，当要查询某个用户的 Profile 时，需要执行额外的跨表查询操作，所以这种方式比起直接继承 AbstractUser 效率更低一点。因此对于新项目来说，``优先推荐使用继承 AbstractUser 的方式来拓展用户模型。``
-# Django用户认证系统: 注册
-用户注册就是创建用户对象，将用户的个人信息保存到数据库里。回顾一下 Django 的 MVT 经典开发流程，对用户注册功能来说，首先创建用户模型（M），这一步我们已经完成了。编写注册视图函数（V），并将为视图函数绑定对应的 URL。编写注册模板（T），模板中提供一个注册表单给用户。Django 用户系统内置了登录、修改密码、找回密码等视图，但是唯独用户注册的视图函数没有提供，这一部分需要我们自己来写。
-
-## 编写用户注册表单
-Django 已经内置了一个用户注册表单：django.contrib.auth.forms.UserCreationForm，不过这个表单的一个小问题是它关联的是 django 内置的 User 模型，从它的源码中可以看出：
+> 注意,这个模型与 User 模型之间建立的一对一关系。因为引用了默认的 User 模型,所以要在models.py 文件中导入它:
 ```python
-class UserCreationForm(forms.ModelForm):
-    ...
+from django.contrib.auth.models import User
+```
+我们为 Rango 应用的用户账户增加了两个字段,还提供了 ``__str__()`` 方法,以便在需要UserProfile 实例的字符串表示形式时返回有意义的值。注意,使用 Python 2 的话,还要定义``__unicode__()`` 方法,返回用户名的 Unicode 格式。
+
+我们增加的 website 和 picture 字段都设定了 blank=True 。因此这两个字段都可以为空,不是必须要提供值。
+
+此外,注意 ImageField 字段的 upload_to 参数。
+
+
+如果想通过 Django 管理界面访问 UserProfile 模型数据,在 Rango 应用的 admin.py 模块中导入
+UserProfile 模型:
+```python
+from rango.models import UserProfile
+```
+然后注册模型:
+```python
+admin.site.register(UserProfile)
+```
+
+## 创建用户注册视图和模板
+
+一切准备妥当之后,接下来实现用户注册功能。为此,我们要定义一个新视图、创建一个模板,并添加一个 URL 映射。
+
+> 注意,有一些现成的用户注册应用可以拿来直接使用,无需我们自己动手实现注册和登录功能。
+然而,在使用这样的应用之前最好了解一下底层机制。没有痛苦就没有收获。在这个过程中还能巩固你对表单的理解,学会如何扩展 User 模型,以及如何上传媒体文件。
+
+实现用户注册功能的步骤如下:
+
+- 定义 UserForm 和 UserProfileForm
+- 添加一个视图,处理创建新用户的过程
+- 创建一个模板,显示 UserForm 和 UserProfileForm
+- 把 URL 映射到前面添加的视图上
+
+最后,还要在首页添加一个链接,指向注册页面。
+
+### 定义 UserForm 和 UserProfileForm
+
+我们要在 rango/forms.py 中定义两个类,继承自 forms.ModelForm 。其中一个针对 User 类,另一个针对前面定义的 UserProfile 模型。这两个 ModelForm 子类创建的 HTML 表单用于显示相应模型的字段,为我们节省了很多工作量。
+首先,在 rango/forms.py 文件中定义两个继承自 forms.ModelForm 的类。
+
+```python
+class UserForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput())
     class Meta:
         model = User
-        fields = ("username",)
-        field_classes = {'username': UsernameField}
+        fields = ('username', 'email', 'password')
+class UserProfileForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ('website', 'picture')
 ```
-问题就出在内部类 Meta 的 model 属性，它的值对应的是 auth.User，因此无法用于我们自定义的 User 模型。好在表单实际上就是一个 Python 类，因此我们可以继承它，对它做一点小小的修改就可以了。
 
-表单的代码通常写在 forms.py 文件里，因此在 users 应用下新建一个 forms.py 文件用于存放表单代码，然后写上如下代码：
+注意,这两个类中都有 Meta 类。如其名所示, Meta 类的作用是为所在的类提供额外的属性。 Meta类中必须有 model 字段。 UserForm 类对应的模型是 User 。此外,还要通过 fields 或 exclude 指定要在表单中显示或排除的字段。
+
+这里,我们只想显示 User 模型的 username 、 email 和 password 字段,以及 UserProfile 模型的website 和 picture 字段。 UserProfile 模型的 user 字段在注册用户时设定。这是因为创建UserProfile 实例时,还没有 User 实例可用。
+
+此外,注意 UserForm 中定义了 password 属性。虽然 User 模型实例有 password 属性,但是在渲染的 HTML 表单中这个字段的值不会被遮盖,用户输入的密码是可见的。鉴于此,我们重新定义了password 属性,指定使用 PasswordInput() 小组件显示这个 CharField ,以防用户输入的密码被人窥见。
+
+最后,别忘了在 forms.py 模块的顶部导入所需的类。为了便于你参考,下面给出导入语句:
 ```python
-users/forms.py
-
-from django.contrib.auth.forms import UserCreationForm
-from .models import User
-
-class RegisterForm(UserCreationForm):
-    class Meta(UserCreationForm.Meta):
-        model = User
-        fields = ("username", "email")
+from django import forms
+from django.contrib.auth.models import User
+from rango.models import Category, Page, UserProfile
 ```
-UserCreationForm 的 Meta 内部类下的 model 属性对应的是 auth.User 模型。而 RegisterForm 通过覆写父类 model 属性的值，将其改为 users.User。
-
-此外 fields 用于指定表单的字段，这些指定的字段在模板中会被渲染成表单控件（即一些 ``<input>`` 等表单控件）。 UserCreationForm 中只指定了 ``fields = ("username",)``，即用户名，此外还有两个字段密码和确认密码在 UserCreationForm 的属性中指定。所以默认的表单渲染后只有用户名（username）、密码、确认密码三个表单控件。我们还希望用户注册时提供邮箱地址，所以在 fields 中增加了 email 字段。
-
-> 注意：虽然 ``model`` 属性的值都被指定为 User，但一个是 auth.User，另一个是 users.User。
-## 编写用户注册视图函数
-首先来分析一下注册函数的逻辑。用户在注册表单里填写注册信息，然后通过表单将这些信息提交给服务器。视图函数从用户提交的数据提取用户的注册信息，然后验证这些数据的合法性。如果数据合法，就新建一个用户对象，将用户的数据保存到数据库，否则就将错误信息返回给用户，提示用户对提交的信息进行修改。过程就是这么简单，下面是对应的代码（视图函数的代码通常写在 views.py 文件里）：
+### 定义 register() 视图
+接下来要渲染表单及处理表单数据。在 Rango 应用的 views.py 模块中,添加一个 import 语句,导入新定义的 UserForm 和 UserProfileForm 类。
 ```python
-users/views.py
-
-from django.shortcuts import render, redirect
-from .forms import RegisterForm
-
+from rango.forms import UserForm, UserProfileForm
+```
+然后定义 register() 视图:
+```python
 def register(request):
-    # 只有当请求为 POST 时，才表示用户提交了注册信息
+    # 一个布尔值,告诉模板注册是否成功
+    # 一开始设为 False,注册成功后改为 True
+    registered = False
+    # 如果是 HTTP POST 请求,处理表单数据
     if request.method == 'POST':
-        # request.POST 是一个类字典数据结构，记录了用户提交的注册信息
-        # 这里提交的就是用户名（username）、密码（password）、邮箱（email）
-        # 用这些数据实例化一个用户注册表单
-        form = RegisterForm(request.POST)
-
-        # 验证数据的合法性
-        if form.is_valid():
-            # 如果提交数据合法，调用表单的 save 方法将用户数据保存到数据库
-            form.save()
-
-            # 注册成功，跳转回首页
-            return redirect('/')
-    else:
-        # 请求不是 POST，表明用户正在访问注册页面，展示一个空的注册表单给用户
-        form = RegisterForm()
-
-    # 渲染模板
-    # 如果用户正在访问注册页面，则渲染的是一个空的注册表单
-    # 如果用户通过表单提交注册信息，但是数据验证不合法，则渲染的是一个带有错误信息的表单
-    return render(request, 'users/register.html', context={'form': form})
+        # 尝试获取原始表单数据
+        # 注意,UserForm 和 UserProfileForm 中的数据都需要
+        user_form = UserForm(data=request.POST)
+        profile_form = UserProfileForm(data=request.POST)
+        # 如果两个表单中的数据是有效的......
+        if user_form.is_valid() and profile_form.is_valid():
+            # 把 UserForm 中的数据存入数据库
+            user = user_form.save()
+            # 使用 set_password 方法计算密码哈希值
+            # 然后更新 user 对象
+            user.set_password(user.password)
+            user.save()
+            # 现在处理 UserProfile 实例
+            # 因为要自行处理 user 属性,所以设定 commit=False
+            # 延迟保存模型,以防出现完整性问题
+            profile = profile_form.save(commit=False)
+            profile.user = user
+            # 用户提供头像了吗?
+            # 如果提供了,从表单数据库中提取出来,赋给 UserProfile 模型
+            if 'picture' in request.FILES:
+                profile.picture = request.FILES['picture']
+                # 保存 UserProfile 模型实例
+                profile.save()
+                # 更新变量的值,告诉模板成功注册了
+                registered = True
+            else:
+                # 表单数据无效,出错了?
+                # 在终端打印问题
+                print(user_form.errors, profile_form.errors)
+        else:
+            # 不是 HTTP POST 请求,渲染两个 ModelForm 实例
+            # 表单为空,待用户填写
+            user_form = UserForm()
+            profile_form = UserProfileForm()
+            # 根据上下文渲染模板
+        return render(request,'rango/register.html',{'user_form': user_form,'profile_form': profile_form,'registered': registered})
 ```
-注意以上视图是处理表单的经典流程，即：
+这个视图看似复杂,其实与添加分类和添加网页的视图十分相似。这里,我们要处理两个不同的ModelForm 实例,一个针对 User 模型,一个针对 UserProfile 模型。如果用户上传了头像,还要处理头像图片。
+此外,还要建立两个模型实例之间的关系。为此,我们先创建 User 模型实例,然后在UserProfile 实例中引用它: profile.user = user 。 UserProfileForm 表单的 user 属性必须这样设定,不能让用户自行填写。
+### 创建注册页面模板
+现在要创建 register() 视图的模板。新建 rango/register.html 文件,写入下述代码。
+
+```html
+{% extends 'rango/base.html' %}
+{% load staticfiles %}
+{% block title_block %}
+    Register
+{% endblock %}
+{% block body_block %}
+<h1>Register for Rango</h1>
+{% if registered %}
+    Rango says: <strong>thank you for registering!</strong>
+    <a href="{% url 'index' %}">Return to the homepage.</a><br/>
+    {%
+{% else %}
+    Rango says: <strong>register here!</strong><br/>
+    <form id="user_form" method="post" action="{% url 'register' %}"
+          enctype="multipart/form-data">
+        {% csrf_token %}
+        <!-- 显示每个表单
+        -->
+        {{ user_form.as_p }}
+        {{ profile_form.as_p }}
+        <!-- 提供一个按钮,点击后提交表单 -->
+        <input type="submit" name="submit" value="Register"/>
+    </form>
+{% endif %}
+endblock %}
+```
+注意,这个模板使用视图中的 registered 变量判断注册是否成功。 registered 的值为 False 时,显示注册表单;否则,显示成功注册消息。
+此外,我们在 user_form 和 profile_form 上调用了 as_p 模板函数。这么做的目的是在段落(HTML ``<p>`` 标签)中显示各个表单元素,一行显示一个表单元素。
+
+最后注意,我们为 ``<form>`` 元素设定了 enctype 属性。这是因为,如果用户想上传头像,表单数据中将包含二进制数据,而且可能相当大。传给服务器时,这些数据要分成几部分。因此,我们要设定 enctype="multipart/form-data" ,让 HTTP 客户端(Web 浏览器)分段打包和发送数据。如若不然,服务器收不到用户提交的全部数据。
+
+此外,别忘了在表单中添加 CSRF 令牌,即 {% csrf_token %} 。否则,Django 的跨站请求伪造保护中间件将拒绝接收表单的内容,返回错误。
+
+### 添加 URL 映射
+有了视图和对应的模板之后,现在可以添加 URL 映射了。打开 Rango 应用的 urls.py 模块,根据下述代码修改 urlpatterns 。
 ```python
-def form_process_view(request):
+urlpatterns = [
+    url(r'^$', views.index, name='index'),
+    url(r'about/$', views.about, name='about'),
+    url(r'^add_category/$', views.add_category, name='add_category'),
+    url(r'^category/(?P<category_name_slug>[\w\-]+)/$',
+        views.show_category,
+        name='show_category'),
+    url(r'^category/(?P<category_name_slug>[\w\-]+)/add_page/$',
+        views.add_page,
+        name='add_page'),
+    url(r'^register/$',
+        views.register,
+        name='register'),  # 新增的模式
+]
+
+```
+新增的模式把 /rango/register/ URL 映射到 register() 视图上。注意,我们为这个新模式设定了name 参数,以便在模板中使用 url 引用,例如 {% url 'register' %} 。
+
+### 添加链接
+最后,在 base.html 模板中添加一个链接,指向注册页面。参照下述代码更新无序列表中的链接,在 Rango 应用的每个页面中都添加指向注册页面的链接。
+![选区_013](https://i.loli.net/2018/06/11/5b1e97ab1741b.png)
+
+### 检验结果
+一切就绪之后,该检验结果了。启动 Django 开发服务器,注册一个用户试试。如果愿意,上传一个头像。注册表单如图所示。
+![1](https://i.loli.net/2018/06/11/5b1e97f739f36.png)
+看到成功注册消息后, User 和 UserProfile 模型在数据库中应该都会增加一条记录。在 Django 管理界面中确认是不是这样。
+
+# 实现登录功能
+
+用户能注册账户之后,接下来要让用户能够登录。为此,要执行以下几步:
+- 定义一个视图,处理登录凭据
+- 创建一个模板,显示登录表单
+- 在首页添加登录链接
+
+## 定义登录视图
+```python
+def user_login(request):
+    # 如果是 HTTP POST 请求,尝试提取相关信息
     if request.method == 'POST':
-        # 请求为 POST，利用用户提交的数据构造一个绑定了数据的表单
-        form = Form(request.POST)
-
-        if form.is_valid():
-            # 表单数据合法
-            # 进行其它处理...
-            # 跳转
-            return redirect('/')
+        # 获取用户在登录表单中输入的用户名和密码
+        # 我们使用的是 request.POST.get('<variable>')
+        # 而不是 request.POST['<variable>']
+        # 这是因为对应的值不存在时,前者返回 None,
+        # 而后者抛出 KeyError 异常
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        # 使用 Django 提供的函数检查 username/password 是否有效
+        # 如果有效,返回一个 User 对象
+        user = authenticate(username=username, password=password)
+        # 如果得到了 User 对象,说明用户输入的凭据是对的
+        # 如果是 None(Python 表示没有值的方式),说明没找到与凭据匹配的用户
+    if user:
+        # 账户激活了吗?可能被禁了
+        if user.is_active:
+            # 登入有效且已激活的账户
+            # 然后重定向到首页
+            login(request, user)
+            return HttpResponseRedirect(reverse('index'))
+        else:
+            # 账户未激活,禁止登录
+            return HttpResponse("Your Rango account is disabled.")
     else:
-        # 请求不是 POST，构造一个空表单
-        form = Form()
-
-    # 渲染模板
-    # 如果不是 POST 请求，则渲染的是一个空的表单
-    # 如果用户通过表单提交数据，但是数据验证不合法，则渲染的是一个带有错误信息的表单
-    return render(request, 'template.html', context={'form': form})
+        # 提供的登录凭据有问题,不能登录
+        print("Invalid login details: {0}, {1}".format(username, password))
+        return HttpResponse("Invalid login details supplied.")
+    # 不是 HTTP POST 请求,显示登录表单
+    # 极有可能是 HTTP GET 请求
+    else:
+        # 没什么上下文变量要传给模板系统
+        # 因此传入一个空字典
+        return render(request, 'rango/login.html', {})
 ```
-以上逻辑代码稍加修改就可以应用于各种表单处理。
-## 设置URL模式
-视图函数需要和对应的 URL 绑定，这样当用户访问某个 URL 时，Django 才知道调用哪个视图函数处理用户请求。首先在 ``users 应用``下新建一个 urls.py 文件用于设置注册视图函数的 URL 模式。
+跟之前一样,因为要处理不同的情况,这个视图看起来十分复杂。从上述代码可以看出,user_login() 视图既能渲染登录表单(包含 username 和 password 两个字段),也能处理表单数据。
+
+如果通过 HTTP GET 方法访问这个视图,显示登录表单。然而,如果通过 HTTP POST 请求访问,则处理表单数据。
+
+如果通过 POST 请求发送有效的表单数据,从中提取用户名和密码。然后使用 Django 提供的authenticate() 函数检查用户名和密码是否匹配某个用户账户。如果能找到这样的用户,返回一个 User 对象,否则返回 None 。
+
+返回 User 对象时,检查账户是否激活。如果是激活的,调用 Django 提供的 login() 函数,登入用户。
+
+然而,如果发送的表达数据无效,例如用户名和密码没有都填,登录表单显示错误消息,提示用户名或密码无效。
+
+你可能注意到了,这里用了一个新类,即 HttpResponseRedirect 。从名称可以看出,HttpResponseRedirect 实例生成的响应让 Web 浏览器重定向到参数指定的 URL。注意,响应的HTTP 状态码是表示重定向的 302,而不是表示成功的 200。详情参见 Django 文档。
+
+最后,使用 Django 提供的 reverse() 函数获取 Rango 应用首页的 URL。 reverse() 函数在 Rango应用的 urls.py 模块中查找名为 index 的 URL 模式,解析出对应的 URL。如果以后修改了 URL 映射,视图代码不受影响。
+
+user_login() 视图用到了 Django 提供的多个函数和类,因此要导入它们。下述 import 语句必须放在 rango/views.py 文件的顶部。
+
+
 ```python
-users/urls.py
-
-from django.conf.urls import url
-from . import views
-
-app_name = 'users'
-urlpatterns = [
-    url(r'^register/', views.register, name='register'),
-]
+from django.contrib.auth import authenticate, login
+from django.http import HttpResponseRedirect, HttpResponse
+from django.core.urlresolvers import reverse
 ```
-``app_name = 'users'`` 为这个 urls 模块设置命名空间。关于 URL 模式的设置如果不明白的话请参考相关基础教程，这里不再赘述。
 
-接下来需要在工程的 urls.py 文件里包含 users 应用的 URL 模式。打开 django_auth_example/ 目录下的 urls.py 文件，将 users.urls.py 包含进来：
-```python
-django_auth_example/urls.py
-
-from django.conf.urls import url, include
-from django.contrib import admin
-
-urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    # 别忘记在顶部引入 include 函数
-    url(r'^users/', include('users.urls')),
-]
-```
-## 编写注册页面模板
-我们在视图函数中渲染了 users/register.html，不过目前这个模板文件还不存在，我们这就来创建它。我习惯喜欢将模板文件放在项目根目录（manage.py 所在目录）的 templates/ 目录下，然后在 templates/ 目录下再新建各个和应用同名的文件夹，用于存放该应用下的模板文件。当然模板放在哪里是无关紧要的，具体视项目而定，只要通过配置模板路径使 Django 能够找到模板文件即可。
-### 设置模板目录结构
-按照我的习惯，先在项目根目录（manage.py 所在目录）新建一个 templates/ 目录，然后在 templates/ 目录下新建一个 users 目录，用于存放 users 应用的相关模板文件。然后在 users/ 目录下新建一个 register.html 模板文件（注意是 templates/ 下的 users/ 目录，不是 users 应用目录）。此时目录结构变为：
-```python
-django_auth_example/
-    manage.py
-    django_auth_example/
-        __init__.py
-        settings.py
-        urls.py
-        wsgi.py
-    templates/
-        users/
-            register.html
-```
-### 配置模板路径
-接着需要在 settings.py 里设置 templates/ 所在路径，在 settings.py 找到 TEMPLATES 选项，它的内容是这样的：
-```python
-django_auth_example/settings.py
-
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
-```
-其中 ``DIRS`` 就是设置模板的路径，在 [] 中写入 os.path.join(BASE_DIR, 'templates')，即像下面这样：
-```python
-django_auth_example/settings.py
-
-TEMPLATES = [
-    {
-        ...
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        ...
-    },
-]
-```
-这里 ``BASE_DIR`` 是 settings.py 在配置开头前面定义的变量，记录的是工程根目录 django_auth_example/ 的值（注意是最外层的 django_auth_example/ 目录）。在这个目录下有模板文件所在的目录 templates/，于是利用``os.path.join`` 把这两个路径连起来，构成完整的模板路径，Django 就知道去这个路径下面找我们的模板了。
-
-###  渲染注册表单
-接下来就是在 register.html 模板中渲染表单了，具体代码如下：
+有了视图之后,我们还要创建一个模板,让用户输入登录凭据。现在你应该知道要把模板放在templates/rango/ 目录中,不过这个模板的名称我不告诉你,请你根据 user_login() 视图的代码确定。在模板中写入下述代码:
 ```html
-templates/users/register.html 
-
-<!DOCTYPE html>
-<html lang="zh-cn">
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>注册</title>
-    <link rel="stylesheet" href="https://unpkg.com/mobi.css/dist/mobi.min.css">
-    <style>
-        .errorlist {
-            color: red;
-        }
-    </style>
-</head>
-<body>
-<div class="flex-center">
-    <div class="container">
-        <div class="flex-center">
-            <div class="unit-1-2 unit-1-on-mobile">
-                <h3>注册</h3>
-                <form class="form" action="{% url 'users:register' %}" method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {{ field.errors }}
-                        {% if field.help_text %}
-                            <p class="help text-small text-muted">{{ field.help_text|safe }}</p>
-                        {% endif %}
-                    {% endfor %}
-                    <button type="submit" class="btn btn-primary btn-block">注册</button>
-                </form>
-                <div class="flex-center top-gap text-small">
-                    <a href="login.html">已有账号登录</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</body>
-</html>
-```
-为了使注册页面更加美观，我引入了 mobi.css 提供样式支持。其它的代码请忽略，重点只关注表单部分：
-```html
-<form class="form" action="{% url 'users:register' %}" method="post">
-  {% csrf_token %}
-  {% for field in form %}
-    {{ field.label_tag }}
-    {{ field }}
-    {{ field.errors }}
-    {% if field.help_text %}
-        <p class="help text-small text-muted">{{ field.help_text|safe }}</p>
-    {% endif %}
-  {% endfor %}
-  <button type="submit" class="btn btn-primary btn-block">注册</button>
+{% extends 'rango/base.html' %}
+{% load staticfiles %}
+{% block title_block %}
+Login
+{% endblock %}
+{% block body_block %}
+<h1>Login to Rango</h1>
+<form id="login_form" method="post" action="{% url 'login' %}">
+{% csrf_token %}
+Username: <input type="text" name="username" value="" size="50" />
+<br />
+Password: <input type="password" name="password" value="" size="50" />
+<br />
+<input type="submit" value="submit" />
 </form>
+{% endblock %}
 ```
-在 Django 中使用表单，必须注意以下几点：
-- 设置表单的 action 属性。这个例子中，表单的数据将提交给 URL /users/register/，然后 Django 调用对应的视图函数 ``register`` 进行处理。这里我们使用了 {% url %} 模板标签，防止 URL 硬编码。关于 {% url %} 模板标签，可以看这篇文章中的介绍 博客文章详情页。
-- 设置表单的 method 属性，通常提交 表单数据都是通过 post 方法提交。
-- 在表单中加入 {% csrf_token %} 模板标签。这个模板标签的用途就是用于防止跨站请求伪造攻击，提高网站的安全性。至于什么是跨站请求伪造，感兴趣的可以搜索相关资料查阅。这里只需记住只要使用了表单，一定要在表单中加 {% csrf_token %} 模板标签，否则 Django 将不允许你提交表单数据。
+input 元素的 name 属性要与 user_login() 视图中的保持一致。也就是说,用户名输入框的 name属性的值应该是 username ,而密码输入框的 name 属性的值应该是 password 。此外,别忘了 {%csrf_token %} 。
 
-接下来就是表单的控件部分。对表单 form（这是一个模板变量，是 RegisterForm 的一个实例，我们在 register 视图函数中将它传递给模板的。）进行循环就可以得到表单的各个控件：
+## 添加URL映射
 
-- {{ field.label_tag }} 是相应控件的 label 标签
-- {{ field }} 是相应的表单控件
-- {{ field.errors }} 是表单的错误（如果有的话）
-- {{ field.help_text|safe }} 是控件相关的帮助信息
-
-例如 RegisterForm 表单有用户名字段，渲染的表单控件为：
-```html
-<label for="id_username">用户名:</label><!-- 对应 {{ field.label_tag }} -->
-<input type="text" name="username" id="id_username" autofocus required maxlength="150" /><!-- 对应 {{ field }} -->
-<p class="help text-small text-muted">必填。150个字符或者更少。包含字母，数字和仅有的@/./+/-/_符号。</p><!-- 对应 {{ field.help_text }} -->
-```
-你可以按 F12 看看表单的源代码，对比一下表单控件是哪一部分渲染而成的。这种表单渲染方式是一种比较通用的做法，你可以把它当做一个模板，稍作修改就可以应用与其它需要渲染表单的模板中。
-
-OK，运行开发服务器，访问 http://127.0.0.1:8000/users/register/，可以看到渲染的用户注册表单了。
-
-![注册表单](https://i.loli.net/2018/06/10/5b1d13af01bad.png)
-
-你可以尝试注册一个用户，或者尝试故意输错一些信息，看看表单渲染的错误信息是什么样的，比如我故意输入两次不同的密码，得到一个错误信息提示：
-
-![两次密码不一致错误提示信息](https://i.loli.net/2018/06/10/5b1d13cd329dd.png)
-
-### 在 Admin 后台查看用户是否注册成功
-如果表单数据没有错误，提交表单后就会跳转到首页，由于我们没有写任何处理首页的视图函数，所以得到一个 404 错误。不过没有关系，我么你现在只关心用户是否注册成功。那么怎么查看用户是否已经注册成功呢？可以去 Django Admin 后台看看是否有用户新注册的数据。为了在 Admin 后台查看用户数据，首先需要注册用户模型。打开 users/admin.py 文件，在里面注册 users.User 模型：
+创建好登录模板之后,接下来要把 user_login() 视图映射到一个 URL 上。修改 Rango 应用的urls.py 模块,在 urlpatterns 列表中添加下述映射:
 ```python
-users/admin.py
-
-from django.contrib import admin
-from .models import User
-
-admin.site.register(User)
+url(r'^login/$', views.user_login, name='login'),
 ```
-为了进入后台，还要创建一个超级管理员用户，使用 ``python manage.py createsuperuser`` 创建一个管理员账户即可。如果你不知道怎么创建，请参照 在 Django Admin 后台发布文章 中的说明。
+## 添加链接
+最后,添加一个链接,方便 Rango 的用户访问登录页面。编辑 templates/rango/ 目录中的 base.html模板,在无序列表中添加下述链接:
+```html
+<ul>
+...
+<li><a href="{% url 'login' %}">Login</a><li>
+</ul>
+```
+如果愿意,还可以修改首页的页头,向已登录的用户显示独特的欢迎消息,而未登录的用户则显示一般的欢迎消息。在 index.html 模板中找到现在的欢迎消息:``hey there partner``
+把这一行改成:
+```html
+{% if user.is_authenticated %}
+howdy {{ user.username }}!
+{% else %}
+hey there partner!
+{% endif %}
+```
+可以看出,我们使用 {% if user.is_authenticated %} 检查用户是否通过身份验证。如果用户已登录,我们能访问 user 对象。因此,我们可以通过这个对象判断用户是否登录(验证身份)。如果用户已登录,我们便能获取关于用户的更多信息。在这个示例中,当用户登录后,我们获取用户的用户名。如果用户未登录,则显示一般的欢迎消息,即“hey there partner!”。
 
-浏览器输入 http://127.0.0.1:8000/admin/，登录管理员账户，可以查看到注册的用户信息了，比如在我的后台可以看到三个用户：
+## 检验结果
+启动 Django 开发服务器,尝试登录
 
-![新注册的用户信息](https://i.loli.net/2018/06/10/5b1d143064551.png)
+![2](https://i.loli.net/2018/06/12/5b1f54bb36fb0.png)
 
-其中有一个是使用 createsuperuser 命令创建的管理员账户，另外两个是注册的新用户。
-
-至此，注册功能已经完成了。用户注册后就要登录，接下来就是如何提供用户登录功能了。
-
-# Django用户认证系统: 登录
-# Django用户认证系统: 注销和页面跳转
-# Django用户认证系统: 修改密码
-# Django用户认证系统: 重置密码
-# Django用户认证系统: 自定义后台认证
+至此,用户登录功能可用了。请启动 Django 开发服务器,注册一个新账户试试。成功注册后,你应该能使用自己设定的凭据登录。
