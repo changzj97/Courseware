@@ -1,4 +1,17 @@
 <ul class="nav navbar-nav navbar-right">
-    <li><a data-cont="登录" title="登录" href="#">登录</a></li>
-    <li><a data-cont="注册" title="注册" href="#">注册</a></li>
+
+    {% if user.is_authenticated %}
+
+        <li><a data-cont="" title="" href="">{{ user.username }}</a></li>
+        <li><a data-cont="" title="注册" href="{% url 'logout' %}">注销</a></li>
+
+
+
+    {% else %}
+        <li><a data-cont="登录" title="登录" href="{% url 'login' %}">登录</a></li>
+        <li><a data-cont="注册" title="注册" href="{% url 'register' %}">注册</a></li>
+
+    {% endif %}
+
+
 </ul>

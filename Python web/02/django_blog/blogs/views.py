@@ -107,7 +107,7 @@ class Index(View):
 
 def blog_detail(request, pid):
     post_detail = Post.objects.get(id=pid)
-    post_detail.views = post_detail.views+1
+    post_detail.views = post_detail.views + 1
     post_detail.save()
 
     blog_count = Post.objects.all().count()
@@ -124,6 +124,6 @@ def blog_detail(request, pid):
         'post_detail': post_detail,
         'comment_list': r_data.return_comment(),
         'recoment_list': recoment_list,
-        'blog_count':blog_count
+        'blog_count': blog_count
     }
     return render(request, 'show.html', ctx)

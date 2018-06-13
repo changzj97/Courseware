@@ -16,6 +16,7 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 from blogs import views as blog_views
+from users import views as user_views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -23,5 +24,8 @@ urlpatterns = [
     url(r'^blog_list/$', blog_views.Bloglist.as_view(), name='bloglist'),
     url(r'^tags_list/(?P<tid>\d+)/$', blog_views.Bloglist.as_view(), name='taglist'),
     url(r'^search/$', blog_views.search, name='search'),
-    url(r'^blog_detail/(?P<pid>\d+)/$', blog_views.blog_detail, name='blog_detail')
+    url(r'^blog_detail/(?P<pid>\d+)/$', blog_views.blog_detail, name='blog_detail'),
+    url(r'^login/$', user_views.LoginView.as_view(), name='login'),
+    url(r'^register/$', user_views.RegisterView.as_view(), name='register'),
+    url(r'^logout/$', user_views.LogoutView.as_view(), name='logout')
 ]

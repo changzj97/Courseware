@@ -1108,7 +1108,266 @@ def blog_detail(request,bid):
 {% endblock %}
 
 ```
+- 编写路由
+```python
+url(r'^login/', LoginView.as_view(), name='login'),
+```
+
+- 编写视图
+```python
+from django.shortcuts import render
+from django.views.generic.base import View
+from django.contrib.auth import authenticate, login, logout
+
+class LoginView(View):
+    def get(self, request):
+        return render(request, 'login.html', {})
+    def post(self, request):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(username=username, password=password)
+
+        if user:
+            if user.is_active:
+                login(request, user)
+                return HttpResponseRedirect(reverse("index"))
+            else:
+                return render(request, 'login.html', {'error_msg':'用户未激活！'})
+        else:
+            return render(request, 'login.html', {'error_msg':'用户名或者密码错误！'})
+```
+- 修改模板 base.html
+```html
+ <ul class="nav navbar-nav navbar-right">
+    {% if user.is_authenticated %}
+    <li><a data-cont="用户" title="用户" href="#">欢迎，{{user.username}}</a></li>
+    <li><a data-cont="注册" title="注册" href="/logout">注销</a></li>
+    {% else %}
+    <li><a data-cont="登录" title="登录" href="/login">登录</a></li>
+    <li><a data-cont="注册" title="注册" href="/register">注册</a></li>
+    {% endif %}
+  </ul>
+```
 # 二十四、实现注册功能
+```html
+
+
+{% extends 'base.html' %}
+{% block title %}知奇博客-注册{% endblock %}
+
+{% block custom_css %}
+<style type="text/css">
+	.panel
+	{
+		padding: 80px 20px 0px;
+		min-height: 400px;
+		cursor: default;
+	}
+	.text-center
+	{
+		margin: 0 auto;
+		text-align: center;
+		border-radius: 10px;
+		max-width: 900px;
+		-moz-box-shadow: 0px 0px 5px rgba(0,0,0,.3);
+		-webkit-box-shadow: 0px 0px 5px rgba(0,0,0,.3);
+		box-shadow: 0px 0px 5px rgba(0,0,0,.1);
+	}
+	.float-left
+	{
+		float: left !important;
+	}
+	.float-right
+	{
+		float: right !important;
+	}
+	img
+	{
+		border: 0;
+		vertical-align: bottom;
+	}
+	h2
+	{
+		padding-top: 20px;
+		font-size: 20px;
+	}
+	.padding-big
+	{
+		padding: 20px;
+	}
+	.alert
+	{
+		border-radius: 5px;
+		padding: 15px;
+		border: solid 1px #ddd;
+		background-color: #f5f5f5;
+	}
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+
+
+<section class="container">
+<div class="panel">
+<div class="row">
+	<div class="col-md-4 col-md-offset-4">
+		<p style="color:red">{{error_msg}}</p>
+		<form action="/register/" method="post">
+	  <div class="form-group">
+	    <label for="exampleInputEmail1">用户名称</label>
+	    <input type="text" name='username' class="form-control" id="exampleInputEmail1" placeholder="请输入用户名称...">
+	  </div>
+
+	  <div class="form-group">
+	    <label for="exampleInputPassword1">密码</label>
+	    <input type="password" name='password' class="form-control" id="exampleInputPassword1" placeholder="请输入密码...">
+	  </div>
+
+		<div class="form-group">
+			<label for="exampleInputEmail">邮箱</label>
+			<input type="email" name='email' class="form-control" id="exampleInputEmail" placeholder="请输入邮箱...">
+		</div>
+
+	  <button type="submit" class="btn btn-default">注册</button>
+		{% csrf_token %}
+	</form>
+
+</div>
+
+</div>
+</div>
+</section>
+
+{% endblock %}
+
+```
+- 编写视图
+
+```python
+from django.contrib.auth.hashers import make_password
+
+....
+
+class RegisterView(View):
+    def get(self, request):
+        return render(request, 'register.html')
+    def post(self, request):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        email = request.POST.get('email')
+
+        # my_send_email(email)
+
+        user = BlogUser()
+        user.username = username
+        user.password = make_password(password)
+        user.email = email
+        user.is_active = False
+
+        user.save()
+
+        return render(request, 'login.html', {})
+```
 # 二十五、实现注册验证功能
+- settings.py中配置
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25
+#发送邮件的邮箱
+EMAIL_HOST_USER = 'xxx'
+#在邮箱中设置的客户端授权密码
+EMAIL_HOST_PASSWORD = '123456'
+#收件人看到的发件人
+EMAIL_FROM = '知奇课堂'
+```
+
+- 视图函数
+```python
+from random import Random
+from django.core.mail import send_mail
+from .models import EmailVerifyRecord
+from blogpro.settings import EMAIL_FROM
+
+
+# 生成随机字符串
+def make_random_str(randomlength=8):
+    str = ''
+    chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz0123456789'
+    length = len(chars) - 1
+    random = Random()
+    for i in range(randomlength):
+        str+=chars[random.randint(0, length)]
+    return str
+
+# 发送邮件
+def my_send_email(email, send_type="register"):
+    email_record = EmailVerifyRecord()
+    if send_type == "update_email":
+        code = make_random_str(4)
+    else:
+        code = make_random_str(16)
+    email_record.code = code
+    email_record.email = email
+    email_record.send_type = send_type
+    email_record.save()
+
+    email_title = ""
+    email_body = ""
+
+    if send_type == "register":
+        email_title = "知奇博客-注册激活链接"
+        email_body = "请点击下面的链接激活你的账号: http://127.0.0.1:8000/active/{0}".format(code)
+
+        send_status = send_mail(email_title, email_body, EMAIL_FROM, [email])
+        if send_status:
+            pass
+    elif send_type == "forget":
+        email_title = "知奇博客-网注册密码重置链接"
+        email_body = "请点击下面的链接重置密码: http://127.0.0.1:8000/reset/{0}".format(code)
+
+        send_status = send_mail(email_title, email_body, EMAIL_FROM, [email])
+        if send_status:
+            pass
+    elif send_type == "update_email":
+        email_title = "知奇博客-邮箱修改验证码"
+        email_body = "你的邮箱验证码为: {0}".format(code)
+
+        send_status = send_mail(email_title, email_body, EMAIL_FROM, [email])
+        if send_status:
+            pass
+    
+
+
+class ActiveView(View):
+    def get(self, request, active_code):
+        all_records = EmailVerifyRecord.objects.filter(code=active_code)
+        if all_records:
+            for record in all_records:
+                email = record.email
+                user = BlogUser.objects.get(email=email)
+                user.is_active = True
+                user.save()
+        else:
+            return render(request, "active_fail.html")
+        return render(request, "login.html")
+```
+- 路由设置
+```python
+ url(r'^login/', LoginView.as_view(), name='login'),
+    url(r'^register/', RegisterView.as_view(), name='register'),
+    url(r'^active/(?P<active_code>[a-zA-Z0-9]+)', ActiveView.as_view(), name='active'),
+    url(r'^logout/', LogoutView.as_view(), name='logout'),
+```
 # 二十六、实现注销功能
+```python
+class LogoutView(View):
+    def get(self, request):
+        logout(request)
+        return HttpResponseRedirect(reverse("index"))
+```
 # 二十七、实现后台富文本功能
