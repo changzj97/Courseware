@@ -1371,3 +1371,30 @@ class LogoutView(View):
         return HttpResponseRedirect(reverse("index"))
 ```
 # 二十七、实现后台富文本功能
+- 下载kindeditor
+地址: http://kindeditor.net/demo.php
+
+- 配置
+在static/js 下面创建一个editor目录,添加
+![选区_025](https://i.loli.net/2018/06/13/5b20fe6451b64.png)
+
+创建一个config.js配置如下:
+```js
+ KindEditor.ready(function(K) {
+                window.editor = K.create('#editor_id',{
+                    //指定大小
+                    width:'800px',
+                    height:'200px',
+                });
+        });
+```
+- 在admin中注册(blogs下面的admin.py中)
+```python
+class PostAdmin(admin.ModelAdmin):
+    class Media:
+        js=(
+            'js/editor/kindeditor-all.js',
+            'js/editor/config.js',
+        )
+admin.site.register(Post,PostAdmin)
+```
