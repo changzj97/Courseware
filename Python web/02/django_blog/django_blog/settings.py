@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
+from django.utils import timezone as datetime
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -126,11 +127,13 @@ STATICFILES_DIRS = [
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.163.com'
+EMAIL_HOST = 'smtp.126.com'
 EMAIL_PORT = 25
 # 发送邮件的邮箱
-EMAIL_HOST_USER = 'xxx'
+EMAIL_HOST_USER = 'kaifachengxu@126.com'
 # 在邮箱中设置的客户端授权密码
-EMAIL_HOST_PASSWORD = '123456'
+EMAIL_HOST_PASSWORD = 'bcliubochao123'
 # 收件人看到的发件人
-EMAIL_FROM = '知奇课堂'
+EMAIL_FROM = 'kaifachengxu@126.com'
+# 加了一句话
+EMAIL_USE_TLS = True

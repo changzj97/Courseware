@@ -27,5 +27,6 @@ urlpatterns = [
     url(r'^blog_detail/(?P<pid>\d+)/$', blog_views.blog_detail, name='blog_detail'),
     url(r'^login/$', user_views.LoginView.as_view(), name='login'),
     url(r'^register/$', user_views.RegisterView.as_view(), name='register'),
-    url(r'^logout/$', user_views.LogoutView.as_view(), name='logout')
+    url(r'^logout/$', user_views.LogoutView.as_view(), name='logout'),
+    url(r'^active/(?P<active_code>[a-zA-Z0-9]+)', user_views.ActiveView.as_view(), name='active'),
 ]
