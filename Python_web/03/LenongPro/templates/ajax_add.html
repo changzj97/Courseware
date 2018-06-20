@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ajax_add</title>
+    <script type="application/javascript" src="/static/js/jquery-1.12.4.min.js"></script>
+
+    <script>
+
+        $(function () {
+
+            $('#input_click').click(
+                function () {
+                    var a = $('#input1').val();
+                    var b = $('#input2').val();
+                    dict_test = {
+                        'a': a,
+                        'b': b
+                    };
+                    $.post('/lenong/add_handle', dict_test, function (data) {
+                        {#alert(data['c'])#}
+                        var c = data['c'];
+                        $('h1').html(c);
+                        $('h1').css("color", "yellow");
+
+
+                    })
+
+                }
+            )
+
+
+        })
+
+
+    </script>
+
+
+</head>
+<body>
+
+<input type="text" id='input1' name="input1">
+<input type="text" id="input2" name="input2">
+<input type="submit" id="input_click" value="确定">
+<hr>
+<h1></h1>
+
+
+</body>
+</html>

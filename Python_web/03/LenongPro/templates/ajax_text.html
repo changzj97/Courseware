@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ajax_test</title>
+    {#    <script src="https://cdn.bootcss.com/jquery/1.12.1/jquery.js"></script>#}
+    <script type="text/javascript" src="/static/js/jquery-1.12.4.min.js"></script>
+
+    <style>
+        #ajax_test_div {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ajax_test_div">请求</div>
+
+<hr>
+
+<button id="action_button">按钮</button>
+
+<script>
+
+    $(function () {
+        alert('1')
+        $.ajax({
+            'url': 'http://127.0.0.1:8000/lenong/ajax_handle/',
+            'type': 'get',
+            'dataType': 'json',
+            'async':false
+        }).success(function (data) {
+
+
+            alert('3')
+
+            {#console.log(data.res)#}
+            var a = data['key1']
+            $('#ajax_test_div').show().html(a)
+
+        })
+
+
+        alert('4')
+        {# 监听按钮点击事件#}
+        {#        $('#action_button').click(function () {#}
+        {#            $.ajax({#}
+        {#                'url': 'http://127.0.0.1:8000/lenong/ajax_handle/',#}
+        {#                'type': 'get',#}
+        {#                'dataType': 'json'#}
+        {#            }).success(function (data) {#}
+        {##}
+        {##}
+        {#                alert('2')#}
+        {##}
+        {#console.log(data.res)#}
+        {#                var a = data['key1']#}
+        {#                $('#ajax_test_div').show().html(a)#}
+        {##}
+        {#            })#}
+        {#        })#}
+
+
+    })
+
+
+</script>
+</body>
+</html>

@@ -1,6 +1,38 @@
 from django.shortcuts import render
 from .models import TypeInfo, Banner, GoodsInfo
 from django.db.models import Q
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views import View
+
+
+class Search_handle(View):
+    def post(self, request):
+        pass
+
+    def get(self, request):
+        keyword = request.GET.get('keywords')
+        # 商品
+        goods_list = GoodsInfo.objects.filter(gtitle__contains=keyword)
+        # goods_type = goods_list[0].gtype
+        # print(type(goods_type))
+        # 空列表
+        news_goods_list = []
+        news_goods_list2 = []
+        # 遍历 所有搜索到的商品
+        for goods in goods_list:
+            news_goods_list.extend(GoodsInfo.objects.filter(gtype=goods.gtype))
+            if len(news_goods_list2) <= 2:
+                for good in news_goods_list:
+                    if good != goods:
+                        news_goods_list2.append(goods)
+        # news_goods_list2 = set(news_goods_list)
+
+        ctx = {
+            'goods_list': goods_list,
+            # 'news_goods_type': news_goods_list2[:2]
+        }
+        return render(request, 'list.html', ctx)
 
 
 def detail(request, gid=1):
@@ -63,3 +95,30 @@ def goods_list(request, tid=-1):
     }
 
     return render(request, 'list.html', ctx)
+
+
+def ajax_test(request):
+    return render(request, 'ajax_text.html')
+
+
+def ajax_handle(request):
+    return JsonResponse({'key1': '1234'})
+    # return HttpResponse('哈哈哈')
+    # return render(request,'index.html')
+
+
+def addshow(request):
+    return render(request, 'ajax_add.html')
+
+
+@csrf_exempt
+def add_handele(request):
+    a = request.POST.get('a')
+    b = request.POST.get('b')
+    c = int(a) + int(b)
+
+    ctx = {
+        'c': c
+    }
+
+    return JsonResponse(ctx)
