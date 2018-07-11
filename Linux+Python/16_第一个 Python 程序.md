@@ -15,10 +15,35 @@ notebook: Linux+Python(Elit_ class)
 * `Python 2.x` 与 `3​​.x` 版本简介
 * 执行 `Python` 程序的三种方式
     * 解释器 —— `python` / `python3`
+ > 直接在终端输入Python或者python3   
+    
     * 交互式 —— `ipython`
+```
+sudo apt install python3-pip
+```
+> pip是Python的软件包管理工具
+```
+# 安装ipython编辑器
+pip3 install ipython3 
+```
+补充: 如果您下载的慢的话,你可以使用镜像
+```
+pip3 install 要安装的软件包的名字 -i https://pypi.douban.com/simple
+```
+
+
     * 集成开发环境 —— `PyCharm`
 
+
+
+
+
+
 ## 01. 第一个 `HelloPython` 程序
+
+
+
+
 
 ### 1.1 Python 源程序的基本概念
 
